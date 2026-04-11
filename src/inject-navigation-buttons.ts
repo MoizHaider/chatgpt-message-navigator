@@ -1,15 +1,22 @@
 import { scrollObserver, resetActiveBtn } from "./scroll-observer";
 import { createBtn } from "./createBtn";
+import { getActivePlatform } from "./detect-platform";
 
 const observedElements = new WeakSet<Element>();
 
 export function injectNavigationButtons() {
-  const parent = document.querySelector('div[role="presentation"]');
+  const config = getActivePlatform();
+
+  const parent = document.querySelector(config.conversationParent);
   if (!parent) return;
 
-  const msgContainer = parent.firstElementChild;
+  const msgContainer =
+    config.btnAnchorStrategy === "firstChild"
+      ? parent.firstElementChild
+      : parent;
+
   const chatArray = parent.querySelectorAll<HTMLElement>(
-    'div[data-message-author-role="user"]',
+    config.userMessageSelector,
   );
 
   if (!msgContainer || chatArray.length === 0) {
@@ -26,20 +33,20 @@ export function injectNavigationButtons() {
     msgContainer.append(btnContainer);
   }
 
-  // Build a map of what we want: index → turnId
+  // Build a list of wanted IDs (stable attribute or index-based fallback)
   const wantedIds: string[] = [];
   for (let i = 0; i < chatArray.length; i++) {
-    wantedIds.push(chatArray[i].getAttribute("data-message-id") || "");
+    if (config.messageIdAttribute) {
+      wantedIds.push(chatArray[i].getAttribute(config.messageIdAttribute) || "");
+    } else {
+      wantedIds.push(`${config.name}-${i}`);
+    }
   }
 
-  // Build a map of what we have: turnId → button element
+  // Build a map of what we already have: turnId → button element
   const existingBtns = btnContainer.querySelectorAll<HTMLButtonElement>(
     "button[data-turn-id]",
   );
-  const existingMap = new Map<string, HTMLButtonElement>();
-  for (const btn of existingBtns) {
-    existingMap.set(btn.getAttribute("data-turn-id") || "", btn);
-  }
 
   // Quick equality check — if all IDs match in order, skip the work
   if (existingBtns.length === wantedIds.length) {
@@ -54,8 +61,6 @@ export function injectNavigationButtons() {
   }
 
   // Full rebuild only when the set of messages changed
-  // (This is still much cheaper than before because we only reach here
-  //  when hasChatStateChanged is true, and we do it at most once per debounce window)
   resetActiveBtn();
   btnContainer.innerHTML = "";
 
@@ -70,7 +75,7 @@ export function injectNavigationButtons() {
       observedElements.add(chat);
     }
 
-    const btn = createBtn(chat, i);
+    const btn = createBtn(chat, i, wantedIds[i]);
     fragment.appendChild(btn);
   }
 

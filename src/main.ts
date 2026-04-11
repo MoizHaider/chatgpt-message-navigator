@@ -1,4 +1,5 @@
 import { injectNavigationButtons } from "./inject-navigation-buttons";
+import { getActivePlatform } from "./detect-platform";
 import "./styles.css";
 
 // --- Debounce utility ---
@@ -18,15 +19,17 @@ injectNavigationButtons();
 
 // --- Observe DOM changes (ChatGPT streams tokens, adds messages, etc.) ---
 function startObserver() {
-  const main = document.querySelector("main");
-  if (!main) {
-    // main hasn't loaded yet — retry shortly
+  const config = getActivePlatform();
+  const root = document.querySelector(config.observerRoot);
+
+  if (!root) {
+    // Root element hasn't loaded yet — retry shortly
     setTimeout(startObserver, 500);
     return;
   }
 
   const observer = new MutationObserver(debouncedInject);
-  observer.observe(main, { childList: true, subtree: true });
+  observer.observe(root, { childList: true, subtree: true });
 }
 startObserver();
 

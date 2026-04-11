@@ -18,7 +18,8 @@
                 "main.css"
             ],
             "matches": [
-                "https://chatgpt.com/*"
+                "https://chatgpt.com/*",
+                "https://gemini.google.com/*"
             ]
         }
     ]
